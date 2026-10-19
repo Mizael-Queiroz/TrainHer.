@@ -893,10 +893,9 @@ MQS_ITEMS = [
     (("Você acorda de madrugada e não consegue adormecer de novo?",
       "Do you wake up in the early hours and can't fall back asleep?",
       "¿Te despiertas de madrugada y no puedes volver a dormir?"), False),
-    # NOTE: scored as a positive item, as in the original code — confirm this is the intended direction.
     (("Você toma remédios para dormir ou tranquilizantes?",
       "Do you take sleeping pills or tranquilizers?",
-      "¿Tomas medicamentos para dormir o tranquilizantes?"), True),
+      "¿Tomas medicamentos para dormir o tranquilizantes?"), False),
     (("Você dorme durante o dia? (sem contar cochilos ou sonecas programados)",
       "Do you sleep during the day? (not counting planned naps)",
       "¿Duermes durante el día? (sin contar siestas programadas)"), False),
@@ -1725,8 +1724,6 @@ with tab_readiness:
             "USA_ALGUM_METODO_CONTRACEPTIVO_HORMONAL_enc": 1 if contraceptive == "yes" else 0,
             "POSSUI_ALGUMA_LESAO_OU_RESTRICAO_MUSCULOESQUELETICO_enc": 1 if injury_pain >= 5 else 0,
             "QUAL_FREQUENCIA_QUE_VOCE_PRATICA_ESSE_EXERCICIO": weekly_frequency,
-            # NOTE: kept exactly as in the original code (the value is multiplied by 60).
-            # Confirm this matches the unit used when the model was trained.
             "EM_MEDIA_QUAL_A_DURACAO_DO_SEU_TREINO_EM_MINUTOS": workout_duration * 60,
             "fase_ciclo": phase_index,
             "COMO_E_SEU_FLUXO_MENSTRUAL_enc": 1,
