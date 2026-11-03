@@ -7,3 +7,4 @@ scikit-learn
 openpyxl
 Pillow
 psycopg2-binary
+httpx
