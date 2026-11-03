@@ -104,6 +104,21 @@ _T = {
         "Faça login no card central para acessar seu painel.",
         "Log in using the card in the center to access your dashboard.",
         "Inicia sesión en la tarjeta central para acceder a tu panel."),
+    # ── login card: feature strip + forgot password ──
+    "feat_cycle": ("Ciclo menstrual", "Menstrual cycle", "Ciclo menstrual"),
+    "feat_sleep": ("Sono", "Sleep", "Sueño"),
+    "feat_exercise": ("Exercício", "Exercise", "Ejercicio"),
+    "feat_duration": ("Duração do treino", "Training duration", "Tiempo de ejercicio"),
+    "feat_symptoms": ("Sintomas e dor", "Symptoms & pain", "Síntomas y dolor"),
+    "feat_stress": ("Nível de estresse", "Stress level", "Nivel de estrés"),
+    "forgot_password": ("Esqueci minha senha", "Forgot my password", "Olvidé mi contraseña"),
+    "forgot_help": (
+        "A redefinição automática de senha ainda não está disponível. "
+        "Fale com a equipe da pesquisa{contact} para recuperar o acesso.",
+        "Automatic password reset is not available yet. "
+        "Contact the research team{contact} to regain access.",
+        "El restablecimiento automático de contraseña aún no está disponible. "
+        "Contacta al equipo de investigación{contact} para recuperar el acceso."),
     # ── auth ──
     "tab_login": ("🔑 Entrar", "🔑 Log in", "🔑 Iniciar sesión"),
     "tab_signup": ("✨ Criar Conta", "✨ Sign up", "✨ Crear cuenta"),
@@ -118,9 +133,9 @@ _T = {
     "choose_password": ("Escolha uma senha", "Choose a password", "Elige una contraseña"),
     # ── Google sign-in ──
     "google_login": (
-        "Continuar com Google",
-        "Continue with Google",
-        "Continuar con Google"),
+        "Entrar com o Google",
+        "Sign in with Google",
+        "Iniciar sesión con Google"),
     "google_consent": (
         "Para concluir o cadastro com Google, escolha sobre o uso dos dados na pesquisa.",
         "To finish Google sign-up, choose whether to allow research use of your data.",
@@ -909,6 +924,235 @@ st.markdown(
 )
 
 # ══════════════════════════════════════════════
+# THEME — pastel waves background, white cards, plum→berry gradient
+# ══════════════════════════════════════════════
+_WAVES_SVG = (
+    '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 765" preserveAspectRatio="xMidYMid slice">'
+    '<defs>'
+    '<linearGradient id="a" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#A596F7"/>'
+    '<stop offset=".55" stop-color="#C9A8F0"/><stop offset="1" stop-color="#E6C0E6"/></linearGradient>'
+    '<linearGradient id="b" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#FFB4A6"/>'
+    '<stop offset="1" stop-color="#F8C7DB"/></linearGradient>'
+    '<linearGradient id="c" x1="1" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#D2B7F2"/>'
+    '<stop offset="1" stop-color="#A890F6"/></linearGradient>'
+    '<linearGradient id="d" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#FF8397"/>'
+    '<stop offset="1" stop-color="#FFA79E"/></linearGradient>'
+    '<linearGradient id="e" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#FDC4AA"/>'
+    '<stop offset="1" stop-color="#FCB9B2"/></linearGradient>'
+    '</defs>'
+    '<rect width="1024" height="765" fill="url(#a)"/>'
+    '<path d="M520 0H1024V330C940 300 860 250 790 270C700 295 650 200 610 120C585 70 560 30 520 0Z" fill="url(#b)"/>'
+    '<path d="M1024 230C930 250 860 330 760 360C700 380 690 440 760 470C860 510 960 470 1024 430Z" fill="#F3EFE9"/>'
+    '<path d="M1024 330C930 340 820 420 740 560C690 650 600 720 480 765H1024Z" fill="url(#c)"/>'
+    '<path d="M360 765C420 700 500 640 560 560C610 490 700 470 760 520C700 600 620 700 560 765Z" fill="#F4EFEA"/>'
+    '<path d="M0 250C80 235 200 270 270 330C330 385 400 410 440 460C300 480 150 440 0 480Z" fill="url(#e)"/>'
+    '<path d="M0 555C90 540 170 590 215 650C255 705 350 740 400 765H0Z" fill="url(#d)"/>'
+    '<path d="M380 0C400 120 330 200 250 270" fill="none" stroke="#fff" stroke-opacity=".45" stroke-width="1.2"/>'
+    '<path d="M0 295C120 300 240 250 330 205" fill="none" stroke="#fff" stroke-opacity=".4" stroke-width="1.2"/>'
+    '<path d="M1024 150C900 170 780 230 700 300" fill="none" stroke="#fff" stroke-opacity=".4" stroke-width="1.2"/>'
+    '</svg>'
+)
+_GOOGLE_G_SVG = (
+    '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48">'
+    '<path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/>'
+    '<path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/>'
+    '<path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/>'
+    '<path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/>'
+    '</svg>'
+)
+
+
+def _svg_uri(svg: str) -> str:
+    return "data:image/svg+xml;base64," + base64.b64encode(svg.encode()).decode()
+
+
+_THEME_CSS = """
+<style>
+:root {
+    --ink: #241A2B;
+    --ink-soft: #6F6577;
+    --line: #E3DDE8;
+    --accent: #8A2F6B;
+    --plum-deep: #45123F;
+    --berry: #B23A68;
+    --brand-grad: linear-gradient(90deg, #45123F 0%, #7E2459 55%, #B23A68 100%);
+}
+
+/* Pastel waves behind everything */
+.stApp { background: #C7B4F3 url("__WAVES__") center / cover no-repeat fixed; }
+[data-testid="stAppViewContainer"], [data-testid="stMain"],
+header[data-testid="stHeader"] { background: transparent !important; }
+
+/* Sidebar: deep plum */
+.stApp section[data-testid="stSidebar"] { background: linear-gradient(180deg, #3A1236 0%, #55194A 100%); }
+
+/* Buttons: plum → berry pill */
+.stApp .stButton > button, .stApp .stDownloadButton > button {
+    background: var(--brand-grad);
+    border-radius: 999px;
+    box-shadow: 0 8px 22px rgba(110, 35, 85, 0.30);
+    letter-spacing: 0.01em;
+}
+.stApp .stButton > button:hover, .stApp .stDownloadButton > button:hover {
+    background: var(--brand-grad);
+    filter: brightness(1.08);
+    box-shadow: 0 10px 26px rgba(110, 35, 85, 0.38);
+}
+
+/* Cards: white, rounder, soft shadow */
+div[data-testid="stVerticalBlockBorderWrapper"] {
+    border-radius: 22px !important;
+    border-color: rgba(255, 255, 255, 0.7) !important;
+    box-shadow: 0 10px 30px rgba(70, 30, 90, 0.10);
+}
+
+/* Main tabs: pills on a white bar */
+.stTabs [data-baseweb="tab-list"] {
+    background: rgba(255, 255, 255, 0.82);
+    border-radius: 18px;
+    padding: 6px;
+    box-shadow: 0 6px 20px rgba(70, 30, 90, 0.08);
+}
+.stTabs [aria-selected="true"] {
+    background: color-mix(in srgb, var(--plum-deep) 9%, #FFFFFF);
+    box-shadow: none;
+}
+.stTabs [aria-selected="true"], .stTabs [aria-selected="true"] * {
+    color: var(--plum-deep) !important;
+    -webkit-text-fill-color: var(--plum-deep) !important;
+}
+
+/* Language selector: white pill */
+.st-key-lang_select { max-width: 190px; }
+.st-key-lang_select [data-baseweb="select"] > div {
+    background: #FFFFFF !important;
+    border: 0 !important;
+    border-radius: 14px !important;
+    min-height: 44px;
+    box-shadow: 0 4px 14px rgba(70, 30, 90, 0.14);
+}
+
+/* ── Login card ── */
+.st-key-login_card, .st-key-login_consent {
+    width: 100%;
+    max-width: 380px;
+    margin: 0 auto;
+    background: #FFFFFF;
+    border-radius: 28px;
+    box-shadow: 0 24px 60px rgba(70, 30, 90, 0.22), 0 2px 6px rgba(70, 30, 90, 0.08);
+    overflow: hidden;
+}
+.st-key-login_card { gap: 0 !important; padding: 0 !important; }
+.st-key-login_body { padding: 0.9rem 2rem 1.7rem 2rem; }
+.st-key-login_consent { padding: 1.4rem 1.6rem; margin-top: 1rem; }
+
+.th-login-head { background: #ECE8F0; padding: 1.7rem 1.1rem 1.25rem 1.1rem; text-align: center; }
+.th-login-logo { display: block; width: 84%; max-width: 300px; height: auto; margin: 0 auto; mix-blend-mode: multiply; }
+.stApp .th-login-wordmark {
+    font-family: var(--font-display); font-weight: 800; font-size: 2.4rem; line-height: 1;
+    letter-spacing: -0.03em; color: #4A1544 !important; -webkit-text-fill-color: #4A1544 !important;
+}
+.stApp .th-login-wordmark span { color: #E5506A !important; -webkit-text-fill-color: #E5506A !important; }
+.stApp .th-login-tag {
+    margin-top: 0.45rem; font-size: 0.62rem; letter-spacing: 0.12em; text-transform: uppercase;
+    color: #6A4A64 !important; -webkit-text-fill-color: #6A4A64 !important;
+}
+.th-feats { display: grid; grid-template-columns: repeat(6, 1fr); gap: 0.25rem; margin-top: 1.15rem; }
+.th-feat { display: flex; flex-direction: column; align-items: center; gap: 0.3rem; text-align: center; }
+.th-feat svg {
+    width: 30px; height: 30px; fill: none; stroke: #8A2767; stroke-width: 1.6;
+    stroke-linecap: round; stroke-linejoin: round;
+}
+.stApp .th-feat span {
+    font-size: 0.5rem; font-weight: 600; letter-spacing: 0.02em; line-height: 1.15;
+    text-transform: uppercase; overflow-wrap: anywhere;
+    color: #5A2A52 !important; -webkit-text-fill-color: #5A2A52 !important;
+}
+
+/* Tabs inside the card: underline instead of pills */
+.st-key-login_card .stTabs [data-baseweb="tab-list"] {
+    background: transparent; box-shadow: none; border-radius: 0; padding: 0; gap: 0;
+    flex-wrap: nowrap; border-bottom: 1px solid #E7E2EC;
+}
+.st-key-login_card .stTabs [data-baseweb="tab"] {
+    flex: 1; justify-content: center; border-radius: 0; padding: 0.75rem 0.5rem;
+}
+.st-key-login_card .stTabs [aria-selected="true"] {
+    background: transparent; box-shadow: inset 0 -3px 0 var(--plum-deep);
+}
+.st-key-login_card [data-testid="stCaptionContainer"] { text-align: center; }
+
+/* Inputs inside the card */
+.st-key-login_card [data-testid="stWidgetLabel"] p { font-weight: 600; font-size: 0.88rem; }
+.st-key-login_card [data-baseweb="input"] > div {
+    border: 1.5px solid #B8B1C4 !important; border-radius: 14px !important; min-height: 46px;
+}
+.st-key-login_card input::placeholder {
+    color: #8C8497 !important; -webkit-text-fill-color: #8C8497 !important; opacity: 1;
+}
+
+/* "Forgot my password": right-aligned text link */
+.st-key-forgot_pw { display: flex; justify-content: flex-end; margin-top: -0.7rem; }
+.stApp .st-key-forgot_pw .stButton > button,
+.stApp .st-key-forgot_pw .stButton > button:hover {
+    background: transparent; box-shadow: none; filter: none; padding: 0; min-height: 0; border-radius: 6px;
+}
+.stApp .st-key-forgot_pw .stButton > button p {
+    font-size: 0.85rem; font-weight: 500;
+    color: var(--plum-deep) !important; -webkit-text-fill-color: var(--plum-deep) !important;
+}
+.stApp .st-key-forgot_pw .stButton > button:hover p { text-decoration: underline; }
+
+/* "Sign in with Google": text link with the G logo */
+.stApp .st-key-google_signin .stButton > button,
+.stApp .st-key-google_signin .stButton > button:hover {
+    background: transparent; box-shadow: none; filter: none; border-radius: 12px; padding: 0.45rem 1rem;
+}
+.stApp .st-key-google_signin .stButton > button:hover { background: #F5F1F8; }
+.stApp .st-key-google_signin .stButton > button p {
+    font-weight: 500; color: var(--ink) !important; -webkit-text-fill-color: var(--ink) !important;
+}
+.stApp .st-key-google_signin .stButton > button::before {
+    content: ""; display: inline-block; width: 20px; height: 20px; margin-right: 0.55rem;
+    background: url("__GLOGO__") center / contain no-repeat;
+}
+.stApp .st-key-google_signin .stButton > button:disabled { opacity: 0.55; }
+</style>
+"""
+
+st.markdown(
+    _THEME_CSS.replace("__WAVES__", _svg_uri(_WAVES_SVG)).replace("__GLOGO__", _svg_uri(_GOOGLE_G_SVG)),
+    unsafe_allow_html=True,
+)
+
+# Line icons for the login card's feature strip (24×24 grid, stroke only)
+_FEATURE_ICONS = (
+    ("feat_cycle", '<rect x="4" y="5" width="16" height="15" rx="2.5"/><path d="M8 3v4M16 3v4M4 10h16"/>'
+                   '<path d="M12 12.6c1.7 1.9 2.5 2.9 2.5 4a2.5 2.5 0 0 1-5 0c0-1.1.8-2.1 2.5-4z"/>'),
+    ("feat_sleep", '<path d="M18 15.2A7.5 7.5 0 0 1 8.8 6a7.5 7.5 0 1 0 9.2 9.2z"/><path d="M14.5 4.5h3.2l-3.2 3.6h3.2"/>'),
+    ("feat_exercise", '<circle cx="13" cy="4" r="1"/><path d="M4 17l5 1 .75-1.5M15 21v-4l-4-3 1-6M7 12V9l5-1 3 3 3 1"/>'),
+    ("feat_duration", '<circle cx="12" cy="13.5" r="7"/><path d="M12 13.5V9.8M10 3h4M12 3v3M18.6 6.9l1.2-1.2"/>'),
+    ("feat_symptoms", '<path d="M12 20s-7.5-4.6-7.5-10.2A4.2 4.2 0 0 1 12 7.3a4.2 4.2 0 0 1 7.5 2.5C19.5 15.4 12 20 12 20z"/>'
+                      '<path d="M7.5 12.5h2.3l1.4-2.8 2 5 1.3-2.2H17"/>'),
+    ("feat_stress", '<path d="M12 20c-4.2 0-7.2-2.6-8-6.2 3.1 0 5.4 1 8 4.2 2.6-3.2 4.9-4.2 8-4.2-.8 3.6-3.8 6.2-8 6.2z"/>'
+                    '<path d="M12 18C9.8 16 9 12.8 12 8c3 4.8 2.2 8 0 10z"/>'),
+)
+
+
+def render_login_header(logo_data: str) -> str:
+    """Lavender header of the login card: logo (or wordmark) + feature icon strip. One line, no blank lines."""
+    if logo_data:
+        brand = f'<img class="th-login-logo" src="data:image/jpeg;base64,{logo_data}" alt="{APP_NAME}"/>'
+    else:
+        brand = f'<div class="th-login-wordmark">Train<span>Her</span></div><div class="th-login-tag">{t("kicker")}</div>'
+    feats = "".join(
+        f'<div class="th-feat"><svg viewBox="0 0 24 24" aria-hidden="true">{svg}</svg><span>{t(key)}</span></div>'
+        for key, svg in _FEATURE_ICONS
+    )
+    return f'<div class="th-login-head">{brand}<div class="th-feats">{feats}</div></div>'
+
+
+# ══════════════════════════════════════════════
 # QUESTIONNAIRES — PSS-10 and MQS (pt, en, es)
 # ══════════════════════════════════════════════
 # PSS-10 questions are paraphrased (same construct as the original instrument by
@@ -1594,8 +1838,20 @@ def load_model_artifacts():
 
 
 # ── Language selector: top-left corner of the page (login screen and main app) ──
-_lang_col, _ = st.columns([1, 3])
-with _lang_col:
+if st.session_state.logged_in:
+    _lang_col, _ = st.columns([1, 3])
+    with _lang_col:
+        language_selector("lang_select")
+else:
+    # Login screen: no sidebar, language pill pinned to the top-left corner
+    st.markdown("""
+<style>
+section[data-testid="stSidebar"], [data-testid="stSidebarCollapsedControl"],
+[data-testid="collapsedControl"] { display: none !important; }
+.stApp .block-container { padding-top: 5.5rem !important; }
+.st-key-lang_select { position: fixed; top: 22px; left: 24px; width: 190px; z-index: 1000; }
+</style>
+""", unsafe_allow_html=True)
     language_selector("lang_select")
 
 model, scaler, feature_cols, _model_error = load_model_artifacts()
@@ -1608,36 +1864,23 @@ if _model_error:
 # ══════════════════════════════════════════════
 if not st.session_state.logged_in:
     _logo_full = logo_b64(LOGO_FULL_PATH) or _logo
-    if _logo_full:
-        st.markdown(f"""
-        <div style="text-align:center; padding: 1rem 0 1rem 0;">
-          <img src="data:image/jpeg;base64,{_logo_full}" alt="TrainHer"
-               style="width:100%; max-width:460px; height:auto; mix-blend-mode:multiply;"/>
-        </div>
-        """, unsafe_allow_html=True)
-    else:
-        st.markdown(f"""
-        <div style="text-align:center; padding: 3rem 0 1.5rem 0;">
-          <div style="font-family:'Bricolage Grotesque',sans-serif; font-size:0.72rem;
-                      color:#5B5B5B !important; ">{t("kicker")}</div>
-          <h1 style="margin:0.25rem 0 0 0; font-size:2.2rem; color:#111111 !important;">🟣 TrainHer</h1>
-        </div>
-        """, unsafe_allow_html=True)
+    _google_ready = google_auth_configured()
 
-    _col_left, _col_center, _col_right = st.columns([1, 1.3, 1])
-    with _col_center:
-        with st.container(border=True):
+    with st.container(key="login_card"):
+        st.markdown(render_login_header(_logo_full), unsafe_allow_html=True)
+        with st.container(key="login_body"):
             tab_login, tab_signup = st.tabs([t("tab_login"), t("tab_signup")])
 
             with tab_login:
-                if google_auth_configured():
-                    if st.button("🌐 " + t("google_login"), key="google_signin", width="stretch"):
-                        st.login("google")
-                else:
+                if not _google_ready:
                     st.caption(t("google_missing"))
-                st.divider()
-                login_username = st.text_input(t("username"), key="login_user")
-                login_password = st.text_input(t("password"), type="password", key="login_pass")
+                login_username = st.text_input(t("username"), key="login_user", placeholder=t("username"))
+                login_password = st.text_input(t("password"), type="password", key="login_pass",
+                                               placeholder=t("password"))
+                if st.button(t("forgot_password"), key="forgot_pw", type="tertiary"):
+                    st.session_state.show_forgot = not st.session_state.get("show_forgot", False)
+                if st.session_state.get("show_forgot"):
+                    st.info(t("forgot_help", contact=f" ({RESEARCH_CONTACT})" if RESEARCH_CONTACT else ""))
                 if st.button(t("btn_login"), width="stretch", type="primary"):
                     if login_user(login_username, login_password):
                         st.session_state.logged_in = True
@@ -1645,10 +1888,15 @@ if not st.session_state.logged_in:
                         st.rerun()
                     else:
                         st.error(t("err_bad_credentials"))
+                if st.button(t("google_login"), key="google_signin", width="stretch",
+                             disabled=not _google_ready):
+                    st.login("google")
 
             with tab_signup:
-                new_username = st.text_input(t("choose_username"), key="new_user")
-                new_password = st.text_input(t("choose_password"), type="password", key="new_pass")
+                new_username = st.text_input(t("choose_username"), key="new_user",
+                                             placeholder=t("choose_username"))
+                new_password = st.text_input(t("choose_password"), type="password", key="new_pass",
+                                             placeholder=t("choose_password"))
                 with st.expander(t("consent_expander")):
                     st.markdown(t("consent_purpose_md"))
                     if ETHICS_APPROVAL_ID:
@@ -1656,7 +1904,7 @@ if not st.session_state.logged_in:
                     if RESEARCH_CONTACT:
                         st.caption(t("consent_contact", contact=RESEARCH_CONTACT))
                 research_consent = st.checkbox(t("consent_checkbox"), key="research_consent")
-                if st.button(t("btn_signup"), width="stretch"):
+                if st.button(t("btn_signup"), width="stretch", type="primary"):
                     if not new_username.strip() or not new_password:
                         st.error(t("err_fill_fields"))
                     elif REQUIRE_RESEARCH_CONSENT and not research_consent:
@@ -1668,25 +1916,24 @@ if not st.session_state.logged_in:
 
     # First Google sign-in: require a separate, explicit research-consent choice.
     if google_is_logged_in() and st.user.get("sub"):
-        with _col_center:
-            with st.container(border=True):
-                st.info(t("google_consent"))
-                with st.expander(t("consent_expander")):
-                    st.markdown(t("consent_purpose_md"))
-                    if ETHICS_APPROVAL_ID:
-                        st.caption(t("consent_irb", id=ETHICS_APPROVAL_ID))
-                    if RESEARCH_CONTACT:
-                        st.caption(t("consent_contact", contact=RESEARCH_CONTACT))
-                google_consent = st.checkbox(t("consent_checkbox"), key="google_research_consent")
-                if st.button(t("google_continue"), key="google_complete", width="stretch", type="primary"):
-                    if REQUIRE_RESEARCH_CONSENT and not google_consent:
-                        st.error(t("err_consent_required"))
-                    else:
-                        _internal_username = google_account_username(str(st.user["sub"]))
-                        register_google_user(_internal_username, google_consent)
-                        st.session_state.username = _internal_username
-                        st.session_state.logged_in = True
-                        st.rerun()
+        with st.container(key="login_consent"):
+            st.info(t("google_consent"))
+            with st.expander(t("consent_expander")):
+                st.markdown(t("consent_purpose_md"))
+                if ETHICS_APPROVAL_ID:
+                    st.caption(t("consent_irb", id=ETHICS_APPROVAL_ID))
+                if RESEARCH_CONTACT:
+                    st.caption(t("consent_contact", contact=RESEARCH_CONTACT))
+            google_consent = st.checkbox(t("consent_checkbox"), key="google_research_consent")
+            if st.button(t("google_continue"), key="google_complete", width="stretch", type="primary"):
+                if REQUIRE_RESEARCH_CONSENT and not google_consent:
+                    st.error(t("err_consent_required"))
+                else:
+                    _internal_username = google_account_username(str(st.user["sub"]))
+                    register_google_user(_internal_username, google_consent)
+                    st.session_state.username = _internal_username
+                    st.session_state.logged_in = True
+                    st.rerun()
     st.stop()
 
 
