@@ -655,28 +655,36 @@ def _slider_color_rules(label_key: str, color: str) -> str:
 
 _CSS = """
 <style>
-@import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Manrope:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@500;600&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,600;12..96,700;12..96,800&family=Figtree:wght@400;500;600;700&display=swap');
+
+/* Design notes
+   - The accent color is data: it follows the cycle phase of the latest reading
+     (a second :root block, injected after login, overrides --accent).
+   - Cards have hierarchy: plain containers are flat with a hairline; result
+     panels (.th-card) are larger and tinted with the accent.
+   - Type: Bricolage Grotesque for headings and numbers, Figtree for text. */
 
 :root {
-    --ink: #111111;
-    --ink-soft: #5B5B5B;
-    --bg: #F4F5F8;
+    --ink: #1D1626;
+    --ink-soft: #6A6074;
+    --bg: #F2F0F6;
     --card-bg: #FFFFFF;
-    --card-border: #EBEBEF;
-    --card-shadow: 0 2px 18px rgba(17,17,17,0.06);
-    --plum: #6B3F63;
-    --plum-dark: #45283F;
-    --sidebar-bg: #17121E;
-    --sidebar-bg-2: #241B2F;
+    --line: #E4E0EB;
+    --accent: #6B3F63;
+    --accent-strong: color-mix(in srgb, var(--accent) 68%, #1D1626);
+    --accent-tint: color-mix(in srgb, var(--accent) 9%, #FFFFFF);
+    --accent-line: color-mix(in srgb, var(--accent) 28%, #FFFFFF);
+    --sidebar-bg: #1D1626;
+    --font-display: 'Bricolage Grotesque', 'Figtree', sans-serif;
+    --font-body: 'Figtree', system-ui, sans-serif;
 }
 
 .stApp { background: var(--bg); color-scheme: light; }
 
-html, body, [class*="css"] { font-family: 'Manrope', sans-serif; color: var(--ink); }
+html, body, [class*="css"] { font-family: var(--font-body); color: var(--ink); }
 
-/* Force text color across the app — fixes the browser's automatic dark theme
-   making white text invisible on the light background. Labels and text
-   are black (#111111), as requested. */
+/* Force text color across the app — keeps the browser's automatic dark theme
+   from making text invisible on the light background. */
 .stApp p, .stApp span, .stApp label, .stApp div, .stApp li,
 .stApp h1, .stApp h2, .stApp h3, .stApp h4, .stApp h5, .stApp h6 {
     color: var(--ink) !important;
@@ -684,168 +692,213 @@ html, body, [class*="css"] { font-family: 'Manrope', sans-serif; color: var(--in
     background-image: none !important;
 }
 
-h1, h2, h3 { font-family: 'Fraunces', serif !important; color: var(--ink); letter-spacing: -0.01em; }
+.stApp h1, .stApp h2, .stApp h3, .stApp h4 {
+    font-family: var(--font-display) !important;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+}
+.stApp .stCaption, .stApp [data-testid="stCaptionContainer"] * {
+    color: var(--ink-soft) !important;
+    -webkit-text-fill-color: var(--ink-soft) !important;
+}
 
-/* ── Premium sidebar (dark background, light text) ── */
+/* Keyboard focus is always visible */
+.stApp button:focus-visible, .stApp [role="tab"]:focus-visible,
+.stApp [role="slider"]:focus-visible, .stApp a:focus-visible {
+    outline: 3px solid var(--accent-line) !important;
+    outline-offset: 2px;
+}
+
+/* ── Sidebar (deep aubergine, light text) ── */
 .stApp section[data-testid="stSidebar"] {
-    background: linear-gradient(180deg, var(--sidebar-bg) 0%, var(--sidebar-bg-2) 100%);
-    border-right: 1px solid rgba(255,255,255,0.06);
+    background: var(--sidebar-bg);
+    border-right: 0;
 }
 .stApp section[data-testid="stSidebar"] * {
-    color: #F3EDF2 !important;
-    -webkit-text-fill-color: #F3EDF2 !important;
+    color: #F1EBF4 !important;
+    -webkit-text-fill-color: #F1EBF4 !important;
 }
 .stApp section[data-testid="stSidebar"] input {
     color: var(--ink) !important;
     -webkit-text-fill-color: var(--ink) !important;
 }
 .stApp section[data-testid="stSidebar"] .stButton > button {
-    background: rgba(255,255,255,0.08);
-    border: 1px solid rgba(255,255,255,0.18);
+    background: transparent;
+    border: 1px solid rgba(255,255,255,0.22);
     width: 100%;
 }
-.stApp section[data-testid="stSidebar"] .stButton > button:hover { background: rgba(255,255,255,0.16); }
+.stApp section[data-testid="stSidebar"] .stButton > button:hover {
+    background: rgba(255,255,255,0.10);
+    box-shadow: none;
+    transform: none;
+}
 
 /* ── Buttons ── */
-.stApp .stButton > button {
-    background: var(--plum);
+.stApp .stButton > button, .stApp .stDownloadButton > button {
+    background: var(--accent-strong);
     color: #FFFFFF !important;
     -webkit-text-fill-color: #FFFFFF !important;
     border: none;
-    border-radius: 10px;
-    font-family: 'Manrope', sans-serif;
+    border-radius: 12px;
+    font-family: var(--font-body);
     font-weight: 600;
-    padding: 0.6rem 1.2rem;
-    transition: transform 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
+    padding: 0.65rem 1.2rem;
+    transition: background 0.15s ease, box-shadow 0.15s ease;
 }
-.stApp .stButton > button p {
+.stApp .stButton > button p, .stApp .stDownloadButton > button p {
     color: #FFFFFF !important;
     -webkit-text-fill-color: #FFFFFF !important;
 }
-.stButton > button:hover {
-    background: var(--plum-dark);
-    transform: translateY(-1px);
-    box-shadow: 0 6px 16px rgba(107,63,99,0.28);
+.stApp .stButton > button:hover, .stApp .stDownloadButton > button:hover {
+    background: color-mix(in srgb, var(--accent-strong) 82%, #000000);
+    box-shadow: 0 4px 14px color-mix(in srgb, var(--accent) 30%, transparent);
 }
 
-/* ── Tabs ── */
-.stTabs [data-baseweb="tab-list"] { gap: 4px; border-bottom: 1px solid var(--card-border); }
+/* ── Tabs: pills instead of an underline ── */
+.stTabs [data-baseweb="tab-list"] {
+    gap: 6px;
+    border-bottom: 0;
+    padding: 4px 0 10px 0;
+    flex-wrap: wrap;
+}
+.stTabs [data-baseweb="tab-highlight"], .stTabs [data-baseweb="tab-border"] { display: none !important; }
 .stTabs [data-baseweb="tab"] {
-    font-family: 'Manrope', sans-serif;
+    font-family: var(--font-body);
     font-weight: 600;
-    color: #8A8A8A;
-    border-radius: 10px 10px 0 0;
-    padding: 0.55rem 1rem;
+    color: var(--ink-soft);
+    background: transparent;
+    border-radius: 999px;
+    padding: 0.5rem 1rem;
+    height: auto;
 }
-.stTabs [aria-selected="true"] { color: var(--plum) !important; background: #F3EDF2; }
-
-/* ── Metrics ── */
-div[data-testid="stMetric"] {
+.stTabs [data-baseweb="tab"]:hover { background: var(--accent-tint); }
+.stTabs [aria-selected="true"] {
+    color: var(--accent-strong) !important;
     background: var(--card-bg);
-    border: 1px solid var(--card-border);
-    border-radius: 16px;
+    box-shadow: inset 0 0 0 1.5px var(--accent-line);
+}
+.stTabs [aria-selected="true"] * {
+    color: var(--accent-strong) !important;
+    -webkit-text-fill-color: var(--accent-strong) !important;
+}
+
+/* ── Metrics: tinted by the phase accent ── */
+div[data-testid="stMetric"] {
+    background: var(--accent-tint);
+    border: 0;
+    border-radius: 14px;
     padding: 1rem 1.2rem;
-    box-shadow: var(--card-shadow);
 }
-.stApp div[data-testid="stMetricValue"] {
-    font-family: 'IBM Plex Mono', monospace !important;
-    color: var(--plum) !important;
-    -webkit-text-fill-color: var(--plum) !important;
+.stApp div[data-testid="stMetricValue"], .stApp div[data-testid="stMetricValue"] * {
+    font-family: var(--font-display) !important;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    color: var(--accent-strong) !important;
+    -webkit-text-fill-color: var(--accent-strong) !important;
 }
-.stApp div[data-testid="stMetricLabel"] {
-    font-family: 'Manrope', sans-serif;
+.stApp div[data-testid="stMetricLabel"], .stApp div[data-testid="stMetricLabel"] * {
+    font-family: var(--font-body);
+    font-weight: 500;
     color: var(--ink-soft) !important;
     -webkit-text-fill-color: var(--ink-soft) !important;
 }
 
-/* ── Cards (bordered containers) — white, soft shadow ── */
+/* ── Containers: flat, hairline border, no shadow ── */
 div[data-testid="stVerticalBlockBorderWrapper"] {
-    border-radius: 18px !important;
-    border-color: var(--card-border) !important;
+    border-radius: 16px !important;
+    border-color: var(--line) !important;
     background: var(--card-bg) !important;
-    box-shadow: var(--card-shadow);
+    box-shadow: none;
 }
 
 /* ── Inputs ── */
 .stApp input, .stApp textarea, .stApp select {
-    border-radius: 8px !important;
+    border-radius: 10px !important;
     background-color: #FFFFFF !important;
-    color: #111111 !important;
-    -webkit-text-fill-color: #111111 !important;
+    color: var(--ink) !important;
+    -webkit-text-fill-color: var(--ink) !important;
 }
-
-/* Number fields — white background, black text. */
 .stApp [data-testid="stNumberInput"] input {
     background-color: #FFFFFF !important;
-    color: #111111 !important;
-    -webkit-text-fill-color: #111111 !important;
+    color: var(--ink) !important;
+    -webkit-text-fill-color: var(--ink) !important;
 }
-
-/* ── White card utility class (used by custom HTML panels) ── */
-.th-card {
-    background: var(--card-bg);
-    border: 1px solid var(--card-border);
-    border-radius: 18px;
-    box-shadow: var(--card-shadow);
-    padding: 1.3rem 1.5rem;
-}
-
-/* ── Boxes/controls: white background ── */
 .stApp [data-baseweb="select"] > div,
 .stApp [data-baseweb="input"] > div,
 .stApp [data-baseweb="textarea"] > div,
 .stApp [data-testid="stTextInput"] > div,
 .stApp [data-testid="stNumberInput"] > div {
     background-color: #FFFFFF !important;
+    border-radius: 10px !important;
+    border-color: var(--line) !important;
 }
-
+.stApp [data-baseweb="input"]:focus-within > div,
+.stApp [data-baseweb="select"]:focus-within > div {
+    border-color: var(--accent) !important;
+    box-shadow: 0 0 0 3px var(--accent-line) !important;
+}
 .stApp [data-baseweb="select"] *,
 .stApp [data-baseweb="input"] input,
 .stApp [data-baseweb="textarea"] textarea {
-    color: #111111 !important;
-    -webkit-text-fill-color: #111111 !important;
+    color: var(--ink) !important;
+    -webkit-text-fill-color: var(--ink) !important;
+}
+.stApp [data-baseweb="select"] svg { fill: var(--ink) !important; }
+
+/* ── Alerts (success / warning / error / info) ── */
+.stApp [data-testid="stAlert"] { border-radius: 14px; }
+
+/* ── Result panels (custom HTML): larger, tinted with the accent ── */
+.th-card {
+    background: var(--accent-tint);
+    border: 1px solid var(--accent-line);
+    border-radius: 22px;
+    padding: 1.4rem 1.6rem;
+}
+.th-title {
+    font-family: var(--font-display);
+    font-weight: 600;
+    font-size: 1rem;
+    letter-spacing: -0.01em;
+    color: var(--ink) !important;
+    margin-bottom: 0.9rem;
 }
 
-.stApp [data-baseweb="select"] svg {
-    fill: #111111 !important;
-}
-
-
-/* ── Custom sliders ──
-   Frequency = purple | Duration = pink/red
-   The rest of the layout stays light with white boxes.
-*/
+/* ── Sliders ──
+   Default = phase accent | Weekly frequency = purple | Duration = coral */
 .stApp [data-testid="stSlider"] [data-baseweb="slider"] > div > div:first-child {
-    background: #E1E3E8 !important;
-    height: 5px !important;
+    background: var(--line) !important;
+    height: 6px !important;
     border-radius: 999px !important;
 }
-
 .stApp [data-testid="stSlider"] [data-baseweb="slider"] > div > div:nth-child(2) {
-    background: #6B3F63 !important;
-    height: 5px !important;
+    background: var(--accent-strong) !important;
+    height: 6px !important;
     border-radius: 999px !important;
 }
-
-/* Slider thumb/indicator */
 .stApp [data-testid="stSlider"] [role="slider"] {
-    background: #6B3F63 !important;
-    border: 0 !important;
-    box-shadow: none !important;
+    background: var(--accent-strong) !important;
+    border: 3px solid #FFFFFF !important;
+    box-shadow: 0 1px 4px rgba(29,22,38,0.35) !important;
 }
 
-/* Workout duration: pink/red */
+/* Workout duration */
 __DURATION_SLIDER_RULES__
 
-/* Weekly frequency: purple */
+/* Weekly frequency */
 __FREQUENCY_SLIDER_RULES__
 
-/* Value shown above the indicator */
 .stApp [data-testid="stSlider"] [data-testid="stThumbValue"] {
-    color: #111111 !important;
-    -webkit-text-fill-color: #111111 !important;
+    font-family: var(--font-display);
+    font-weight: 600;
+    color: var(--ink) !important;
+    -webkit-text-fill-color: var(--ink) !important;
 }
 
+/* Respect reduced-motion preferences */
+@media (prefers-reduced-motion: reduce) {
+    .stApp * { transition: none !important; animation: none !important; }
+}
 </style>
 """
 
@@ -1297,26 +1350,28 @@ def compute_phase(day: int, cycle_length: int, period_length: int) -> int:
 # ══════════════════════════════════════════════
 # 3. HTML RENDERING HELPERS
 # ══════════════════════════════════════════════
-def render_gauge(score, color, label_text=None, size=150):
-    """Circular gauge (donut) in pure CSS — visual panel for the AI result."""
+def render_gauge(score, color, label_text=None, size=160):
+    """Ring gauge (SVG) with rounded ends — visual panel for the AI result."""
     label_text = label_text or t("gauge_default")
-    pct = max(0.0, min(100.0, (score / 10.0) * 100))
-    inner = int(size * 0.72)
+    ratio = max(0.0, min(1.0, score / 10.0))
+    radius = 52
+    circumference = 2 * 3.141592653589793 * radius
+    filled = circumference * ratio
     return f"""
-    <div style="display:flex; flex-direction:column; align-items:center; gap:0.5rem;">
-      <div style="width:{size}px; height:{size}px; border-radius:50%;
-                  background: conic-gradient({color} {pct}%, #EDEDF2 {pct}% 100%);
-                  display:flex; align-items:center; justify-content:center;
-                  box-shadow: var(--card-shadow);">
-        <div style="width:{inner}px; height:{inner}px; border-radius:50%; background:#FFFFFF;
-                    display:flex; flex-direction:column; align-items:center; justify-content:center;">
-          <span style="font-family:'IBM Plex Mono',monospace; font-size:1.7rem; font-weight:600; color:{color} !important;">
-            {score:.1f}
-          </span>
-          <span style="font-size:0.65rem; color:#5B5B5B !important;">/ 10.0</span>
-        </div>
-      </div>
-      <span style="font-family:'Manrope',sans-serif; font-weight:600; font-size:0.8rem; color:#111111 !important; text-align:center;">
+    <div style="display:flex; flex-direction:column; align-items:center; gap:0.6rem;">
+      <svg width="{size}" height="{size}" viewBox="0 0 128 128" role="img"
+           aria-label="{label_text}: {score:.1f} / 10">
+        <circle cx="64" cy="64" r="{radius}" fill="none" stroke="{color}" stroke-opacity="0.16" stroke-width="12"/>
+        <circle cx="64" cy="64" r="{radius}" fill="none" stroke="{color}" stroke-width="12"
+                stroke-linecap="round" stroke-dasharray="{filled:.2f} {circumference:.2f}"
+                transform="rotate(-90 64 64)"/>
+        <text x="64" y="68" text-anchor="middle" font-family="'Bricolage Grotesque', sans-serif"
+              font-size="34" font-weight="700" fill="#1D1626" style="fill:#1D1626 !important;">{score:.1f}</text>
+        <text x="64" y="87" text-anchor="middle" font-family="'Figtree', sans-serif"
+              font-size="11" fill="#6A6074" style="fill:#6A6074 !important;">/ 10</text>
+      </svg>
+      <span style="font-family:'Figtree',sans-serif; font-weight:600; font-size:0.9rem;
+                   color:#1D1626 !important; text-align:center;">
         {label_text}
       </span>
     </div>
@@ -1324,7 +1379,7 @@ def render_gauge(score, color, label_text=None, size=150):
 
 
 def render_cycle_timeline(cycle_day, cycle_length, period_length):
-    """Horizontal bar with the 4 cycle phases and a marker on the current day."""
+    """Phase ribbon with a marker on the current day; each segment is labeled with its phase."""
     cycle_length = max(cycle_length, 1)
     day_in_cycle = cycle_day % cycle_length if cycle_length > 0 else cycle_day
     ov_start, ov_end = _ovulation_window(cycle_length, period_length)
@@ -1337,28 +1392,31 @@ def render_cycle_timeline(cycle_day, cycle_length, period_length):
     ]
     bars = "".join(
         f'<div title="{label(name)}" style="flex:{max(end - start, 0.3)}; '
-        f'background:{PHASE_STYLE[name]["color"]}; height:100%;"></div>'
+        f'background:{PHASE_STYLE[name]["color"]}; height:100%; border-radius:999px;"></div>'
         for start, end, name in segments
     )
-    legend = "".join(f'<span>{PHASE_STYLE[n]["emoji"]} {label(n)}</span>' for n in PHASES)
+    names = "".join(
+        f'<div style="flex:{max(end - start, 0.3)}; min-width:0; overflow:hidden; text-overflow:ellipsis; '
+        f'white-space:nowrap; text-align:center; color:{PHASE_STYLE[name]["color"]} !important;">'
+        f'{PHASE_STYLE[name]["emoji"]} {label(name)}</div>'
+        for start, end, name in segments
+    )
     marker_pct = max(0.0, min(100.0, (day_in_cycle / cycle_length) * 100))
     title = t("timeline_title", day=day_in_cycle, total=cycle_length)
 
     return f"""
-    <div class="th-card" style="padding:1.1rem 1.4rem;">
-      <div style="font-family:'Manrope',sans-serif; font-weight:700; font-size:0.75rem;
-                  text-transform:uppercase; letter-spacing:0.06em; color:#5B5B5B !important; margin-bottom:0.7rem;">
-        {title}
-      </div>
-      <div style="position:relative; padding-top:12px;">
+    <div class="th-card">
+      <div class="th-title">{title}</div>
+      <div style="position:relative; padding-top:6px;">
+        <div style="display:flex; gap:3px; height:14px;">{bars}</div>
         <div style="position:absolute; top:0; left:{marker_pct}%; transform:translateX(-50%);
-                    width:0; height:0; border-left:6px solid transparent; border-right:6px solid transparent;
-                    border-top:9px solid #111111;"></div>
-        <div style="display:flex; height:16px; border-radius:8px; overflow:hidden;">{bars}</div>
+                    width:26px; height:26px; border-radius:50%; background:#FFFFFF;
+                    border:4px solid #1D1626; box-sizing:border-box;
+                    box-shadow:0 2px 6px rgba(29,22,38,0.25);"></div>
       </div>
-      <div style="display:flex; justify-content:space-between; margin-top:0.5rem;
-                  font-family:'Manrope',sans-serif; font-size:0.68rem; color:#5B5B5B !important;">
-        {legend}
+      <div style="display:flex; gap:3px; margin-top:0.9rem; font-family:'Figtree',sans-serif;
+                  font-size:0.78rem; font-weight:600;">
+        {names}
       </div>
     </div>
     """
@@ -1464,9 +1522,9 @@ if _logo:
 else:
     st.sidebar.markdown(f"""
 <div style="padding:0.4rem 0 1rem 0;">
-  <div style="font-family:'IBM Plex Mono',monospace; letter-spacing:0.16em; font-size:0.65rem;
-              color:#B9A9C4 !important; text-transform:uppercase;">TrainHer</div>
-  <div style="font-family:'Fraunces',serif; font-size:1.3rem; color:#F3EDF2 !important; margin-top:0.15rem;">
+  <div style="font-family:'Bricolage Grotesque',sans-serif; font-size:0.65rem;
+              color:#B9A9C4 !important; ">TrainHer</div>
+  <div style="font-family:'Bricolage Grotesque',sans-serif; font-size:1.3rem; color:#F3EDF2 !important; margin-top:0.15rem;">
     🟣 {t("sidebar_panel")}
   </div>
 </div>
@@ -1474,17 +1532,20 @@ else:
 
 if st.session_state.logged_in:
     last_record = get_last_record(st.session_state.username)
+    _accent = PHASE_STYLE.get(last_record['phase'], {}).get('color') if last_record else None
+    if _accent:
+        st.markdown(f"<style>:root {{ --accent: {_accent}; }}</style>", unsafe_allow_html=True)
     st.sidebar.markdown(f"""
     <div style="background:rgba(255,255,255,0.06); border-radius:12px; padding:0.9rem 1rem; margin-bottom:0.8rem;">
-      <div style="font-size:0.72rem; color:#B9A9C4 !important; text-transform:uppercase; letter-spacing:0.05em;">{t("logged_in_as")}</div>
-      <div style="font-family:'Manrope',sans-serif; font-weight:700; font-size:1rem; color:#F3EDF2 !important;">{display_name()}</div>
+      <div style="font-size:0.72rem; color:#B9A9C4 !important;  ">{t("logged_in_as")}</div>
+      <div style="font-family:'Figtree',sans-serif; font-weight:700; font-size:1rem; color:#F3EDF2 !important;">{display_name()}</div>
     </div>
     """, unsafe_allow_html=True)
     if last_record:
         st.sidebar.markdown(f"""
         <div style="background:rgba(255,255,255,0.06); border-radius:12px; padding:0.9rem 1rem; margin-bottom:1rem;">
-          <div style="font-size:0.72rem; color:#B9A9C4 !important; text-transform:uppercase; letter-spacing:0.05em;">{t("latest_readiness")}</div>
-          <div style="font-family:'IBM Plex Mono',monospace; font-weight:600; font-size:1.4rem; color:#F3EDF2 !important;">{last_record['score']:.1f} / 10.0</div>
+          <div style="font-size:0.72rem; color:#B9A9C4 !important;  ">{t("latest_readiness")}</div>
+          <div style="font-family:'Bricolage Grotesque',sans-serif; font-weight:600; font-size:1.4rem; color:#F3EDF2 !important;">{last_record['score']:.1f} / 10.0</div>
           <div style="font-size:0.78rem; color:#B9A9C4 !important;">{label(last_record['phase'])}</div>
         </div>
         """, unsafe_allow_html=True)
@@ -1557,8 +1618,8 @@ if not st.session_state.logged_in:
     else:
         st.markdown(f"""
         <div style="text-align:center; padding: 3rem 0 1.5rem 0;">
-          <div style="font-family:'IBM Plex Mono',monospace; letter-spacing:0.14em; font-size:0.72rem;
-                      color:#5B5B5B !important; text-transform:uppercase;">{t("kicker")}</div>
+          <div style="font-family:'Bricolage Grotesque',sans-serif; font-size:0.72rem;
+                      color:#5B5B5B !important; ">{t("kicker")}</div>
           <h1 style="margin:0.25rem 0 0 0; font-size:2.2rem; color:#111111 !important;">🟣 TrainHer</h1>
         </div>
         """, unsafe_allow_html=True)
@@ -1645,8 +1706,8 @@ if _logo:
 else:
     st.markdown(f"""
 <div style="padding: 0.3rem 0 1.2rem 0;">
-  <div style="font-family:'IBM Plex Mono',monospace; letter-spacing:0.14em; font-size:0.72rem;
-              color:#8A7E88 !important; text-transform:uppercase;">{t("kicker")}</div>
+  <div style="font-family:'Bricolage Grotesque',sans-serif; font-size:0.72rem;
+              color:#8A7E88 !important; ">{t("kicker")}</div>
   <h1 style="margin:0.25rem 0 0 0; font-size:2.4rem; color:#111111 !important;">🟣 TrainHer</h1>
   <p style="color:#6B5E69 !important; font-size:1.02rem; margin-top:0.3rem;">
     {t("tagline")}
@@ -1678,11 +1739,11 @@ with tab_dashboard:
         with col_info:
             with st.container(border=True):
                 st.markdown(f"""
-                <div style="font-family:'Manrope',sans-serif; font-weight:700; color:{phase_style['color']} !important;
-                            text-transform:uppercase; font-size:0.72rem; letter-spacing:0.08em;">
+                <div style="font-family:'Figtree',sans-serif; font-weight:700; color:{phase_style['color']} !important;
+                             font-size:0.72rem; ">
                     {phase_style['emoji']} {t("dash_phase_label")}
                 </div>
-                <div style="font-family:'Fraunces',serif; font-size:1.6rem; color:#111111 !important; margin-top:0.1rem;">
+                <div style="font-family:'Bricolage Grotesque',sans-serif; font-size:1.6rem; color:#111111 !important; margin-top:0.1rem;">
                     {label(last['phase'])}
                 </div>
                 <div style="font-size:0.85rem; color:#5B5B5B !important; margin-top:0.4rem;">
@@ -1923,11 +1984,11 @@ with tab_readiness:
             with st.container(border=True):
                 adjustment_note = t("daily_adjustment", adj=f"{total_adjustment:+.1f}") if adjustment_details else ""
                 st.markdown(f"""
-                <div style="font-family:'Manrope',sans-serif; font-weight:700; color:{style['color']} !important;
-                            text-transform:uppercase; font-size:0.72rem; letter-spacing:0.08em;">
+                <div style="font-family:'Figtree',sans-serif; font-weight:700; color:{style['color']} !important;
+                             font-size:0.72rem; ">
                     {style['emoji']} {t("phase_detected")}
                 </div>
-                <div style="font-family:'Fraunces',serif; font-size:1.8rem; color:#111111 !important; margin-top:0.1rem;">
+                <div style="font-family:'Bricolage Grotesque',sans-serif; font-size:1.8rem; color:#111111 !important; margin-top:0.1rem;">
                     {label(phase_name)}
                 </div>
                 <div style="font-size:0.85rem; color:#5B5B5B !important; margin-top:0.5rem;">
