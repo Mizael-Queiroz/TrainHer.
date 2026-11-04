@@ -1456,9 +1456,12 @@ class _Connection:
     def __init__(self):
         if USE_PG:
             self._pool = _pg_pool()
-            self._raw = self._pool.getconn()
+             self._raw = self._pool.getconn()
             if self._raw.closed:
                 self._reconnect()
+            with self._raw.cursor() as _cur:
+                _cur.execute("SET search_path TO public")
+            self._raw.commit()
         else:
             self._pool = None
             self._raw = sqlite3.connect(DB_PATH)
