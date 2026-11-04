@@ -285,7 +285,7 @@ _T = {
     "ok_signup": (
         "Conta criada! Guarde o código de recuperação abaixo: ele aparece só agora. Depois, vá para a aba Entrar.",
         "Account created! Save the recovery code below: it is shown only now. Then go to the Log in tab.",
-        "¡Cuenta creada! Guarda el código de recuperación de abajo: se muestra solo ahora. Luego ve a la pestaña Iniciar sesión."),
+        "¡Cuenta creada! Guarda el código de recuperación de abajo: se muestra solo agora. Luego ve a la pestaña Iniciar sesión."),
     "err_user_exists": (
         "Nome de usuário já existe.",
         "Username already exists.",
@@ -1459,10 +1459,9 @@ class _Connection:
             self._raw = self._pool.getconn()
             if self._raw.closed:
                 self._reconnect()
-            with self._raw.cursor() as _cur:
-                _cur.execute("SET search_path TO public")
-            self._raw.commit()
-             
+            # Garante que as queries utilizem sempre o schema 'public' no PostgreSQL
+            with self._raw.cursor() as cur:
+                cur.execute("SET search_path TO public;")
         else:
             self._pool = None
             self._raw = sqlite3.connect(DB_PATH)
@@ -1722,9 +1721,12 @@ def _insert(sql: str, params: tuple) -> None:
     _bump_data_version()
 
 
-def _record(username, phase, score):
+def save_record(username, phase, score):
+    # Converte explicitamente a fase para str e o score para float nativo do Python.
+    # Isso evita que tipos numpy.float64 sejam formatados como np.float64(...) pelo psycopg2
+    # e disparem erros de schema inexistente no PostgreSQL.
     _insert("INSERT INTO registros (username, data, fase, score) VALUES (?, ?, ?, ?)",
-            (username, _now(), phase, score))
+            (username, _now(), str(phase), float(score)))
 
 
 def save_checkin(username, pain, mood, energy, sleep, flow):
@@ -2305,7 +2307,6 @@ section[data-testid="stSidebar"], [data-testid="stSidebarCollapsedControl"],
     language_selector("lang_select")
 
 
-
 # ══════════════════════════════════════════════
 # 7a. LOGIN / SIGN-UP — centered card (when logged out)
 # ══════════════════════════════════════════════
@@ -2750,9 +2751,6 @@ def render_readiness_tab(username: str):
         model_score = max(0.0, min(10.0, raw_score))
 
         # ── Rule-based adjustment using today's check-in / PSS-10 / MQS (when available) ──
-        # The ML model was trained only on profile + cycle phase (the dataset has no real
-        # historical PSS-10/MQS data). So this adjustment is rule-based, not learned — until
-        # enough real check-ins accumulate to include them when retraining with pipeline_final.py.
         total_adjustment = 0.0
         adjustments = []   # (translation key, params) — rendered in the current language on display
 
@@ -2793,15 +2791,8 @@ def render_readiness_tab(username: str):
 
         predicted_score = max(0.0, min(10.0, model_score + total_adjustment))
 
-        try:
-            save_record(username, phase_name, predicted_score)
-        except Exception as e:
-            diag = getattr(e, "diag", None)
-            st.error(f"{type(e).__name__}: {getattr(diag, 'message_primary', None) or e}")
-            st.code(f"schema={getattr(diag, 'schema_name', None)} | "
-                    f"table={getattr(diag, 'table_name', None)} | "
-                    f"context={getattr(diag, 'context', None)}")
-            st.stop()
+        # Conversão explícita para float do Python ao guardar no PostgreSQL
+        save_record(username, phase_name, float(predicted_score))
         st.session_state["last_prediction"] = {
             "username": username, "phase_name": phase_name, "phase_index": phase_index,
             "model_score": float(model_score), "predicted_score": float(predicted_score),
