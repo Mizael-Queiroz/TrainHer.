@@ -1722,7 +1722,7 @@ def _insert(sql: str, params: tuple) -> None:
     _bump_data_version()
 
 
-def save_record(username, phase, score):
+def _record(username, phase, score):
     _insert("INSERT INTO registros (username, data, fase, score) VALUES (?, ?, ?, ?)",
             (username, _now(), phase, score))
 
@@ -2793,7 +2793,15 @@ def render_readiness_tab(username: str):
 
         predicted_score = max(0.0, min(10.0, model_score + total_adjustment))
 
-        save_record(username, phase_name, predicted_score)
+        try:
+            save_record(username, phase_name, predicted_score)
+        except Exception as e:
+            diag = getattr(e, "diag", None)
+            st.error(f"{type(e).__name__}: {getattr(diag, 'message_primary', None) or e}")
+            st.code(f"schema={getattr(diag, 'schema_name', None)} | "
+                    f"table={getattr(diag, 'table_name', None)} | "
+                    f"context={getattr(diag, 'context', None)}")
+            st.stop()
         st.session_state["last_prediction"] = {
             "username": username, "phase_name": phase_name, "phase_index": phase_index,
             "model_score": float(model_score), "predicted_score": float(predicted_score),
