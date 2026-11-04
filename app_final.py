@@ -33,9 +33,12 @@ import zipfile
 import os
 import base64
 import hashlib
+import threading
+import html
 import hmac
 import datetime
 from pathlib import Path
+from zoneinfo import ZoneInfo
 from PIL import Image
 
 # ══════════════════════════════════════════════
@@ -50,6 +53,7 @@ LOGO_FULL_PATH = BASE_DIR / "logo_trainher.jpeg"
 ICON_PATH = BASE_DIR / "trainher_icon.png"
 
 
+@st.cache_data(show_spinner=False)
 def logo_b64(path: Path = LOGO_HEADER_PATH) -> str:
     """Return the image as base64 for embedding in HTML (empty string if missing)."""
     try:
@@ -1247,29 +1251,58 @@ MQS_OPTIONS = {
 
 
 # ══════════════════════════════════════════════
-# 1. DATABASE (external Postgres if DATABASE_URL is set; otherwise local SQLite)
+# 1. DATABASE (PostgreSQL pool for concurrent users; SQLite only for local development)
 # ══════════════════════════════════════════════
+from contextlib import contextmanager
+
+
 def _secret(name: str, default: str = "") -> str:
     """Read a value from Streamlit secrets, falling back to environment variables."""
     try:
-        return str(st.secrets[name])
+        value = st.secrets[name]
+        return str(value) if value is not None else default
     except Exception:
         return os.environ.get(name, default)
 
 
-USE_PG = bool(_secret("DATABASE_URL"))
+DATABASE_URL = _secret("DATABASE_URL").strip()
+USE_PG = bool(DATABASE_URL)
+DB_POOL_MIN = max(1, int(_secret("DB_POOL_MIN", "1")))
+DB_POOL_MAX = max(DB_POOL_MIN, int(_secret("DB_POOL_MAX", "10")))
+APP_TIMEZONE = _secret("APP_TIMEZONE", "America/Fortaleza")
+
+
+@st.cache_resource(show_spinner=False)
+def _get_pg_pool(database_url: str, minconn: int, maxconn: int):
+    """One thread-safe connection pool per Streamlit process/configuration."""
+    from psycopg2.pool import ThreadedConnectionPool
+    pool = ThreadedConnectionPool(
+        minconn=minconn,
+        maxconn=maxconn,
+        dsn=database_url,
+        connect_timeout=10,
+        application_name="TrainHer",
+    )
+    # ThreadedConnectionPool raises immediately when full; the semaphore makes
+    # callers wait briefly instead of failing on a short traffic spike.
+    return pool, threading.BoundedSemaphore(maxconn)
 
 
 class _Cursor:
-    """Cursor wrapper that accepts '?' placeholders for both SQLite and Postgres."""
-
-    def __init__(self, cursor):
+    """Cursor wrapper accepting '?' placeholders on SQLite and PostgreSQL."""
+    def __init__(self, cursor, owner):
         self._c = cursor
+        self._owner = owner
+        self._closed = False
 
     def execute(self, sql, params=()):
         if USE_PG:
             sql = sql.replace("?", "%s")
-        self._c.execute(sql, params)
+        try:
+            self._c.execute(sql, params)
+        except Exception:
+            self._owner._broken = True
+            raise
         return self
 
     def fetchone(self):
@@ -1282,26 +1315,111 @@ class _Cursor:
     def description(self):
         return self._c.description
 
+    def close(self):
+        if not self._closed:
+            try:
+                self._c.close()
+            finally:
+                self._closed = True
+                self._owner._cursors.discard(self)
+
 
 class _Connection:
-    def __init__(self, raw):
+    """Returns pooled PostgreSQL connections to the pool instead of closing them."""
+    def __init__(self, raw, pool=None, semaphore=None):
         self._raw = raw
+        self._pool = pool
+        self._semaphore = semaphore
+        self._broken = False
+        self._closed = False
+        self._cursors = set()
 
     def cursor(self):
-        return _Cursor(self._raw.cursor())
+        cur = _Cursor(self._raw.cursor(), self)
+        self._cursors.add(cur)
+        return cur
 
     def commit(self):
-        self._raw.commit()
+        try:
+            self._raw.commit()
+        except Exception:
+            self._broken = True
+            raise
+
+    def rollback(self):
+        try:
+            self._raw.rollback()
+        except Exception:
+            self._broken = True
+            raise
 
     def close(self):
-        self._raw.close()
+        if self._closed:
+            return
+        self._closed = True
+        for cur in list(self._cursors):
+            try:
+                cur.close()
+            except Exception:
+                self._broken = True
+        if self._pool is not None:
+            try:
+                if self._raw.closed:
+                    self._pool.putconn(self._raw, close=True)
+                else:
+                    # Never return an open/failed transaction to another user.
+                    self._raw.rollback()
+                    self._pool.putconn(self._raw, close=self._broken)
+            except Exception:
+                try:
+                    self._pool.putconn(self._raw, close=True)
+                except Exception:
+                    pass
+            finally:
+                if self._semaphore is not None:
+                    self._semaphore.release()
+        else:
+            self._raw.close()
+
+
+@contextmanager
+def db_connection():
+    """Always clean up connections, including when SQL or application code fails."""
+    conn = get_conn()
+    try:
+        yield conn
+    except Exception:
+        try:
+            conn.rollback()
+        except Exception:
+            pass
+        raise
+    finally:
+        conn.close()
 
 
 def get_conn() -> _Connection:
     if USE_PG:
-        import psycopg2
-        return _Connection(psycopg2.connect(_secret("DATABASE_URL"), connect_timeout=15))
-    return _Connection(sqlite3.connect(DB_PATH))
+        pool, semaphore = _get_pg_pool(DATABASE_URL, DB_POOL_MIN, DB_POOL_MAX)
+        if not semaphore.acquire(timeout=20):
+            raise TimeoutError(
+                "Banco ocupado: limite de conexões simultâneas atingido. "
+                "Aumente DB_POOL_MAX ou a capacidade do PostgreSQL."
+            )
+        try:
+            raw = pool.getconn()
+            return _Connection(raw, pool=pool, semaphore=semaphore)
+        except Exception:
+            semaphore.release()
+            raise
+
+    # SQLite is a development fallback. For a public multi-user deployment, configure
+    # DATABASE_URL and use PostgreSQL; local SQLite is not suitable for multiple replicas.
+    raw = sqlite3.connect(DB_PATH, timeout=30)
+    raw.execute("PRAGMA busy_timeout=30000")
+    raw.execute("PRAGMA foreign_keys=ON")
+    raw.execute("PRAGMA journal_mode=WAL")
+    return _Connection(raw)
 
 
 def _integrity_errors():
@@ -1313,46 +1431,52 @@ def _integrity_errors():
 
 
 def read_df(sql: str, params=()) -> pd.DataFrame:
-    conn = get_conn()
-    try:
+    with db_connection() as conn:
         cur = conn.cursor().execute(sql, params)
         columns = [d[0] for d in cur.description]
-        return pd.DataFrame(cur.fetchall(), columns=columns)
-    finally:
-        conn.close()
+        rows = cur.fetchall()
+        return pd.DataFrame(rows, columns=columns)
+
+
+def _app_now():
+    """Current timestamp in the application's configured local timezone."""
+    return datetime.datetime.now(ZoneInfo(APP_TIMEZONE))
 
 
 def _now() -> str:
-    return datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    return _app_now().strftime("%Y-%m-%d %H:%M:%S")
 
 
 def init_db():
-    """Create tables if missing (schema names are in Portuguese on purpose — see module docstring)."""
-    conn = get_conn()
-    c = conn.cursor()
-    c.execute("""CREATE TABLE IF NOT EXISTS users
-                 (username TEXT PRIMARY KEY, password TEXT)""")
-    c.execute("""CREATE TABLE IF NOT EXISTS registros
-                 (username TEXT, data TEXT, fase TEXT, score REAL)""")
-    c.execute("""CREATE TABLE IF NOT EXISTS checkins_diarios
-                 (username TEXT, data TEXT, dor INTEGER, humor TEXT,
-                  energia INTEGER, sono TEXT, fluxo TEXT)""")
-    c.execute("""CREATE TABLE IF NOT EXISTS pss10_respostas
-                 (username TEXT, data TEXT, score_total INTEGER, respostas TEXT)""")
-    c.execute("""CREATE TABLE IF NOT EXISTS mqs_respostas
-                 (username TEXT, data TEXT, score_total INTEGER, respostas TEXT)""")
-    # research-consent columns (migration for older databases)
-    if USE_PG:
-        c.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS consentimento_pesquisa INTEGER")
-        c.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS consentimento_data TEXT")
-    else:
-        existing = [r[1] for r in c.execute("PRAGMA table_info(users)").fetchall()]
-        if "consentimento_pesquisa" not in existing:
-            c.execute("ALTER TABLE users ADD COLUMN consentimento_pesquisa INTEGER")
-        if "consentimento_data" not in existing:
-            c.execute("ALTER TABLE users ADD COLUMN consentimento_data TEXT")
-    conn.commit()
-    conn.close()
+    """Create tables and indexes; safe to call at startup on each app process."""
+    with db_connection() as conn:
+        c = conn.cursor()
+        c.execute("""CREATE TABLE IF NOT EXISTS users
+                     (username TEXT PRIMARY KEY, password TEXT)""")
+        c.execute("""CREATE TABLE IF NOT EXISTS registros
+                     (username TEXT, data TEXT, fase TEXT, score REAL)""")
+        c.execute("""CREATE TABLE IF NOT EXISTS checkins_diarios
+                     (username TEXT, data TEXT, dor INTEGER, humor TEXT,
+                      energia INTEGER, sono TEXT, fluxo TEXT)""")
+        c.execute("""CREATE TABLE IF NOT EXISTS pss10_respostas
+                     (username TEXT, data TEXT, score_total INTEGER, respostas TEXT)""")
+        c.execute("""CREATE TABLE IF NOT EXISTS mqs_respostas
+                     (username TEXT, data TEXT, score_total INTEGER, respostas TEXT)""")
+
+        if USE_PG:
+            c.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS consentimento_pesquisa INTEGER")
+            c.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS consentimento_data TEXT")
+        else:
+            existing = [r[1] for r in c.execute("PRAGMA table_info(users)").fetchall()]
+            if "consentimento_pesquisa" not in existing:
+                c.execute("ALTER TABLE users ADD COLUMN consentimento_pesquisa INTEGER")
+            if "consentimento_data" not in existing:
+                c.execute("ALTER TABLE users ADD COLUMN consentimento_data TEXT")
+
+        # These indexes keep user-specific dashboards and history queries responsive.
+        for table in ("registros", "checkins_diarios", "pss10_respostas", "mqs_respostas"):
+            c.execute(f"CREATE INDEX IF NOT EXISTS idx_{table}_user_data ON {table} (username, data)")
+        conn.commit()
 
 
 # ── Google accounts ──
@@ -1362,21 +1486,15 @@ def google_account_username(identity: str) -> str:
 
 
 def register_google_user(username: str, research_consent: bool) -> None:
-    """Create an OAuth-only user if absent. Never store a usable local password."""
-    conn = get_conn()
-    try:
-        c = conn.cursor()
-        c.execute("SELECT username FROM users WHERE username=?", (username,))
-        if not c.fetchone():
-            c.execute(
-                "INSERT INTO users (username, password, consentimento_pesquisa, consentimento_data) "
-                "VALUES (?, ?, ?, ?)",
-                (username, "oauth-only:" + os.urandom(24).hex(),
-                 int(research_consent), _now() if research_consent else None),
-            )
-            conn.commit()
-    finally:
-        conn.close()
+    """Create an OAuth-only user; ON CONFLICT avoids simultaneous duplicate signup."""
+    with db_connection() as conn:
+        conn.cursor().execute(
+            "INSERT INTO users (username, password, consentimento_pesquisa, consentimento_data) "
+            "VALUES (?, ?, ?, ?) ON CONFLICT (username) DO NOTHING",
+            (username, "oauth-only:" + os.urandom(24).hex(),
+             int(research_consent), _now() if research_consent else None),
+        )
+        conn.commit()
 
 
 # ── Passwords: PBKDF2-SHA256 with random salt ──
@@ -1388,117 +1506,111 @@ def _hash_password(password: str, salt: bytes = None) -> str:
 
 
 def _check_password(password: str, stored: str) -> bool:
-    # Google (OAuth-only) accounts can never sign in with a password.
     if stored and stored.startswith("oauth-only:"):
         return False
     if stored and stored.startswith("pbkdf2$"):
-        _, salt_hex, _ = stored.split("$")
-        return hmac.compare_digest(_hash_password(password, bytes.fromhex(salt_hex)), stored)
-    # legacy accounts (plain-text password): compare, then migrate on login
+        try:
+            _, salt_hex, _ = stored.split("$")
+            candidate = _hash_password(password, bytes.fromhex(salt_hex))
+            return hmac.compare_digest(candidate, stored)
+        except (ValueError, TypeError):
+            return False
+    # Legacy plaintext credentials are verified once and migrated after successful login.
     return hmac.compare_digest(password, stored or "")
 
 
 def add_user(username, password, research_consent=False):
-    conn = get_conn()
-    c = conn.cursor()
     try:
-        c.execute(
-            "INSERT INTO users (username, password, consentimento_pesquisa, consentimento_data) "
-            "VALUES (?, ?, ?, ?)",
-            (username, _hash_password(password), 1 if research_consent else 0,
-             _now() if research_consent else None),
-        )
-        conn.commit()
+        with db_connection() as conn:
+            conn.cursor().execute(
+                "INSERT INTO users (username, password, consentimento_pesquisa, consentimento_data) "
+                "VALUES (?, ?, ?, ?)",
+                (username, _hash_password(password), int(bool(research_consent)),
+                 _now() if research_consent else None),
+            )
+            conn.commit()
         return True
     except _integrity_errors():
         return False
-    finally:
-        conn.close()
 
 
 def login_user(username, password):
-    conn = get_conn()
-    c = conn.cursor()
-    c.execute("SELECT username, password FROM users WHERE username=?", (username,))
-    user = c.fetchone()
-    ok = bool(user) and _check_password(password, user[1])
-    if ok and not user[1].startswith("pbkdf2$"):
-        c.execute("UPDATE users SET password=? WHERE username=?",
-                  (_hash_password(password), username))
-        conn.commit()
-    conn.close()
-    return user if ok else None
+    with db_connection() as conn:
+        c = conn.cursor()
+        c.execute("SELECT username, password FROM users WHERE username=?", (username,))
+        user = c.fetchone()
+        ok = bool(user) and _check_password(password, user[1])
+        if ok and not (user[1] or "").startswith(("pbkdf2$", "oauth-only:")):
+            c.execute("UPDATE users SET password=? WHERE username=?",
+                      (_hash_password(password), username))
+            conn.commit()
+        return user if ok else None
 
 
 def save_record(username, phase, score):
-    conn = get_conn()
-    c = conn.cursor()
-    c.execute("INSERT INTO registros (username, data, fase, score) VALUES (?, ?, ?, ?)",
-              (username, _now(), phase, score))
-    conn.commit()
-    conn.close()
+    with db_connection() as conn:
+        conn.cursor().execute(
+            "INSERT INTO registros (username, data, fase, score) VALUES (?, ?, ?, ?)",
+            (username, _now(), phase, score),
+        )
+        conn.commit()
 
 
 def save_checkin(username, pain, mood, energy, sleep, flow):
-    conn = get_conn()
-    c = conn.cursor()
-    c.execute(
-        "INSERT INTO checkins_diarios (username, data, dor, humor, energia, sono, fluxo) "
-        "VALUES (?, ?, ?, ?, ?, ?, ?)",
-        (username, _now(), pain, mood, energy, sleep, flow),
-    )
-    conn.commit()
-    conn.close()
+    with db_connection() as conn:
+        conn.cursor().execute(
+            "INSERT INTO checkins_diarios (username, data, dor, humor, energia, sono, fluxo) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?)",
+            (username, _now(), pain, mood, energy, sleep, flow),
+        )
+        conn.commit()
 
 
 def save_pss10(username, total_score, answers):
-    conn = get_conn()
-    c = conn.cursor()
-    c.execute(
-        "INSERT INTO pss10_respostas (username, data, score_total, respostas) VALUES (?, ?, ?, ?)",
-        (username, _now(), total_score, str(answers)),
-    )
-    conn.commit()
-    conn.close()
+    with db_connection() as conn:
+        conn.cursor().execute(
+            "INSERT INTO pss10_respostas (username, data, score_total, respostas) VALUES (?, ?, ?, ?)",
+            (username, _now(), total_score, str(answers)),
+        )
+        conn.commit()
 
 
 def save_mqs(username, total_score, answers):
-    conn = get_conn()
-    c = conn.cursor()
-    c.execute(
-        "INSERT INTO mqs_respostas (username, data, score_total, respostas) VALUES (?, ?, ?, ?)",
-        (username, _now(), total_score, str(answers)),
-    )
-    conn.commit()
-    conn.close()
+    with db_connection() as conn:
+        conn.cursor().execute(
+            "INSERT INTO mqs_respostas (username, data, score_total, respostas) VALUES (?, ?, ?, ?)",
+            (username, _now(), total_score, str(answers)),
+        )
+        conn.commit()
 
 
 # ── Queries ──
 def get_today_checkin(username):
-    conn = get_conn()
-    c = conn.cursor()
-    today = datetime.date.today().strftime("%Y-%m-%d")
-    c.execute(
-        "SELECT dor, humor, energia, sono, fluxo FROM checkins_diarios "
-        "WHERE username=? AND data LIKE ? ORDER BY data DESC LIMIT 1",
-        (username, f"{today}%"),
-    )
-    row = c.fetchone()
-    conn.close()
+    today = _app_now().date().strftime("%Y-%m-%d")
+    with db_connection() as conn:
+        c = conn.cursor()
+        c.execute(
+            "SELECT dor, humor, energia, sono, fluxo FROM checkins_diarios "
+            "WHERE username=? AND data LIKE ? ORDER BY data DESC LIMIT 1",
+            (username, f"{today}%"),
+        )
+        row = c.fetchone()
     if row:
         return {"pain": row[0], "mood": row[1], "energy": row[2], "sleep": row[3], "flow": row[4]}
     return None
 
 
 def _get_latest_score(table: str, username):
-    conn = get_conn()
-    c = conn.cursor()
-    c.execute(
-        f"SELECT score_total, data FROM {table} WHERE username=? ORDER BY data DESC LIMIT 1",
-        (username,),
-    )
-    row = c.fetchone()
-    conn.close()
+    allowed_tables = {"pss10_respostas", "mqs_respostas"}
+    if table not in allowed_tables:
+        raise ValueError("Tabela não permitida")
+    with db_connection() as conn:
+        c = conn.cursor()
+        c.execute(
+            f"SELECT score_total, data FROM {table} WHERE username=? ORDER BY data DESC LIMIT 1",
+            (username,),
+        )
+        row = c.fetchone()
     return {"total_score": row[0], "date": row[1]} if row else None
 
 
@@ -1511,14 +1623,13 @@ def get_latest_mqs(username):
 
 
 def get_last_record(username):
-    conn = get_conn()
-    c = conn.cursor()
-    c.execute(
-        "SELECT fase, score, data FROM registros WHERE username=? ORDER BY data DESC LIMIT 1",
-        (username,),
-    )
-    row = c.fetchone()
-    conn.close()
+    with db_connection() as conn:
+        c = conn.cursor()
+        c.execute(
+            "SELECT fase, score, data FROM registros WHERE username=? ORDER BY data DESC LIMIT 1",
+            (username,),
+        )
+        row = c.fetchone()
     return {"phase": row[0], "score": row[1], "date": row[2]} if row else None
 
 
@@ -1685,7 +1796,7 @@ def export_anonymized_zip(salt: str):
             df.insert(0, "participante", df["username"].map(codes))
             df = df.drop(columns=["username"])
             z.writestr(f"{table}.csv", df.to_csv(index=False))
-        z.writestr("README.txt", t("export_readme", when=f"{datetime.datetime.now():%Y-%m-%d %H:%M:%S}",
+        z.writestr("README.txt", t("export_readme", when=f"{_app_now():%Y-%m-%d %H:%M:%S}",
                                    n=len(consenting)))
     return buffer.getvalue(), len(consenting)
 
@@ -1698,6 +1809,11 @@ def _init_db_once():
 
 
 _init_db_once()
+if not USE_PG:
+    st.warning(
+        "O TrainHer está usando SQLite local. Para disponibilizar a aplicação publicamente "
+        "a vários usuários ou instâncias, configure DATABASE_URL com PostgreSQL nos Secrets."
+    )
 
 
 # ══════════════════════════════════════════════
@@ -1735,10 +1851,12 @@ if google_is_logged_in() and not st.session_state.logged_in:
 
 
 def display_name() -> str:
-    """Friendly name for the sidebar: Google name for Google accounts, username otherwise."""
+    """Return an HTML-escaped display name for safe insertion into sidebar markup."""
     if st.session_state.username.startswith("google_") and google_is_logged_in():
-        return st.user.get("name") or st.user.get("email") or st.session_state.username
-    return st.session_state.username
+        value = st.user.get("name") or st.user.get("email") or st.session_state.username
+    else:
+        value = st.session_state.username
+    return html.escape(str(value))
 
 
 def _on_language_change(widget_key: str) -> None:
@@ -1810,7 +1928,7 @@ if st.session_state.logged_in:
                     st.caption(t("admin_n_participants", n=_n_participants))
                     st.download_button(
                         t("admin_download"), _zip_bytes,
-                        file_name=f"trainher_anonymized_data_{datetime.date.today():%Y%m%d}.zip",
+                        file_name=f"trainher_anonymized_data_{_app_now():%Y%m%d}.zip",
                         mime="application/zip", width="stretch",
                     )
     if st.sidebar.button(t("logout")):
@@ -1821,6 +1939,9 @@ if st.session_state.logged_in:
         st.rerun()
 else:
     st.sidebar.caption(t("login_hint"))
+
+
+_MODEL_PREDICT_LOCK = threading.RLock()  # cached model is shared across Streamlit sessions
 
 
 # ══════════════════════════════════════════════
@@ -2168,7 +2289,8 @@ with tab_readiness:
         else:
             X_scaled = scaler.transform(df_input.values)
 
-        raw_score = model.predict(X_scaled)[0]
+        with _MODEL_PREDICT_LOCK:
+            raw_score = model.predict(X_scaled)[0]
         model_score = max(0.0, min(10.0, raw_score))
 
         # ── Rule-based adjustment using today's check-in / PSS-10 / MQS (when available) ──
