@@ -962,6 +962,7 @@ div[data-testid="stVerticalBlockBorderWrapper"] {
 }
 .stApp [data-baseweb="select"] svg { fill: var(--ink) !important; }
 
+/* ── Alerts (success / warning / error / info) ── */
 .stApp [data-testid="stAlert"] { 
     border-radius: 14px; 
 }
@@ -971,7 +972,6 @@ div[data-testid="stVerticalBlockBorderWrapper"] {
     color: inherit !important;
     -webkit-text-fill-color: initial !important;
 }
-
 /* ── Result panels (custom HTML): larger, tinted with the accent ── */
 .th-card {
     background: var(--accent-tint);
