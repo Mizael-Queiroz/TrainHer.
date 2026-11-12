@@ -49,9 +49,8 @@ import time
 from pathlib import Path
 from PIL import Image
 
-# ══════════════════════════════════════════════
+
 # PAGE CONFIG + ASSETS
-# ══════════════════════════════════════════════
 APP_NAME = "TrainHer"
 BASE_DIR = Path(__file__).parent
 ARTIFACTS_DIR = BASE_DIR / "artefatos"          # folder name produced by pipeline_final.py
@@ -102,32 +101,28 @@ def _load_page_icon():
 
 st.set_page_config(page_title=APP_NAME, page_icon=_load_page_icon(), layout="centered")
 
-# ══════════════════════════════════════════════
+
 # RESEARCH / CONSENT / OPERATIONS SETTINGS
-# ══════════════════════════════════════════════
-REQUIRE_RESEARCH_CONSENT = True   # False = consent is optional (account can be created without it)
-ETHICS_APPROVAL_ID = ""           # optional: ethics committee approval number (CAAE), shown at sign-up
-RESEARCH_CONTACT = ""             # optional: team e-mail used to withdraw consent / recover access
 
-MIN_PASSWORD_LEN = 8              # minimum password length
-CONSENT_VERSION = "2026-11-v1"    # change whenever the consent text changes
-BACKUP_DIR = BASE_DIR / "backups" # local SQLite backups only
-BACKUP_KEEP = 14                  # daily SQLite backups kept
-MEM_WARN_MB = 800                 # memory warning threshold in the admin panel
+REQUIRE_RESEARCH_CONSENT = True   
+ETHICS_APPROVAL_ID = ""           
+RESEARCH_CONTACT = ""             
 
-# ══════════════════════════════════════════════
+MIN_PASSWORD_LEN = 8              
+CONSENT_VERSION = "2026-11-v1"   
+BACKUP_DIR = BASE_DIR / "backups" 
+BACKUP_KEEP = 14                  
+MEM_WARN_MB = 800                
+
 # INTERNATIONALIZATION (pt / en / es)
-# ══════════════════════════════════════════════
 LANGUAGES = {"pt": "Português", "en": "English", "es": "Español"}
 DEFAULT_LANG = "pt"
 
 if "lang" not in st.session_state:
     st.session_state.lang = DEFAULT_LANG
-
-# Language for this script run (the radio callback updates session_state before the run starts).
+  
 _ACTIVE_LANG = st.session_state.lang
 
-# Every UI string lives here as (portuguese, english, spanish).
 _T = {
     # ── brand / generic ──
     "tagline": (
@@ -967,8 +962,15 @@ div[data-testid="stVerticalBlockBorderWrapper"] {
 }
 .stApp [data-baseweb="select"] svg { fill: var(--ink) !important; }
 
-/* ── Alerts (success / warning / error / info) ── */
-.stApp [data-testid="stAlert"] { border-radius: 14px; }
+.stApp [data-testid="stAlert"] { 
+    border-radius: 14px; 
+}
+.stApp [data-testid="stAlert"] p, 
+.stApp [data-testid="stAlert"] span, 
+.stApp [data-testid="stAlert"] div {
+    color: inherit !important;
+    -webkit-text-fill-color: initial !important;
+}
 
 /* ── Result panels (custom HTML): larger, tinted with the accent ── */
 .th-card {
