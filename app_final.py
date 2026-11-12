@@ -479,9 +479,9 @@ _T = {
     "pain_scale": ("Escala de dor (0-10)", "Pain scale (0-10)", "Escala de dolor (0-10)"),
     "cycle_title": ("### 🩸 Ciclo Menstrual", "### 🩸 Menstrual Cycle", "### 🩸 Ciclo menstrual"),
     "cycle_day": (
-        "Em qual dia do ciclo você está hoje?",
-        "Which day of your cycle are you on today?",
-        "¿En qué día del ciclo estás hoy?"),
+        "Qual foi o dia da sua ultima menstruação?",
+        "What was the day of your last period?",
+        "¿Cuál fue el día de tu última menstruación?"),
     "cycle_length": (
         "Duração média do seu ciclo (dias)",
         "Average cycle length (days)",
